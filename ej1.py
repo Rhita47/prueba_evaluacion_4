@@ -1,127 +1,105 @@
 import heapq
 
-class Node:
-    def __init__(self, char, freq):
-        self.char = char
+class HuffmanNode:
+    def __init__(self, symbol, freq):
+        self.symbol = symbol
         self.freq = freq
         self.left = None
         self.right = None
 
     def __lt__(self, other):
+        if self.freq == other.freq:
+            return self.symbol < other.symbol
         return self.freq < other.freq
 
-# Jeroglíficos y sus frecuencias
-symbols = {
-    'Sphinx': 5,
-    'Pyramid': 7,
-    'Lotus': 8,
-    'Scarab': 9,
-    'Obelisk': 10,
-    'Djed': 11,
-    'Eye of Horus': 12,
-    'Ankh': 15
-}
+def build_huffman_tree(symbols):
+    heap = [HuffmanNode(sym, freq) for sym, freq in symbols.items()]
+    heapq.heapify(heap)
 
-# Crear una cola de prioridad
-priority_queue = [Node(sym, freq) for sym, freq in symbols.items()]
-heapq.heapify(priority_queue)
+    while len(heap) > 1:
+        left = heapq.heappop(heap)
+        right = heapq.heappop(heap)
 
-# Función para construir el árbol de Huffman
-def build_huffman_tree():
-    while len(priority_queue) > 1:
-        left = heapq.heappop(priority_queue)
-        right = heapq.heappop(priority_queue)
-
-        merged = Node(None, left.freq + right.freq)
+        merged = HuffmanNode(left.symbol + right.symbol, left.freq + right.freq)
         merged.left = left
         merged.right = right
+        heapq.heappush(heap, merged)
 
-        heapq.heappush(priority_queue, merged)
+    return heap[0]
 
-    return priority_queue[0]
+def generate_codes(node, prefix="", codebook={}):
+    if node.left is None and node.right is None:
+        codebook[node.symbol] = prefix
+    if node.left:
+        generate_codes(node.left, prefix + "0", codebook)
+    if node.right:
+        generate_codes(node.right, prefix + "1", codebook)
+    return codebook
 
-# Construir el árbol
-root = build_huffman_tree()
-
-# Función para generar los códigos Huffman
-def generate_codes(node, code="", codes={}):
-    if node.char:
-        codes[node.char] = code
-    else:
-        generate_codes(node.left, code + "0", codes)
-        generate_codes(node.right, code + "1", codes)
-    return codes
-
-# Generar los códigos Huffman
-huffman_codes = generate_codes(root)
-
-# Función para descifrar el mensaje
-def decode(encoded_message, codes):
-    reverse_codes = {v: k for k, v in codes.items()}
-    decoded_message = []
-    buffer = ""
-    for bit in encoded_message:
-        buffer += bit
-        if buffer in reverse_codes:
-            decoded_message.append(reverse_codes[buffer])
-            buffer = ""
-    return decoded_message
-
-# Mensajes codificados
-encoded_messages = [
-    "10001011101011000010111010001110000011011000000111100111101001011000011010011100110100010111010111111101000011110011111100111101000110001100000010110101111011111110111010110110111001110110111100111111100101001010010100000101101011000101100110100011100100101100001100100011010110101011111111111011011101110010000100101011000111111100010001110110011001011010001101111101011010001101110000000111001001010100011111100001100101101011100110011110100011000110000001011010111110011100",
-    "0110101011011100101000111101011100110111010110110100001000111010100101111010011111110111001010001111010111001101110101100001100010011010001110010010001100010110011001110010010000111101111010"
-]
-
-# Descifrar mensajes
-decoded_messages = [decode(msg, huffman_codes) for msg in encoded_messages]
-
-# Calcular espacio de memoria
-original_bits = sum(symbols[sym] * 8 for sym in symbols)  # 8 bits por símbolo
-compressed_bits = sum(len(huffman_codes[sym]) * symbols[sym] for sym in symbols)
-
-print("Códigos Huffman:", huffman_codes)
-print("Mensaje 1 descifrado:", decoded_messages[0])
-print("Mensaje 2 descifrado:", decoded_messages[1])
-print("Espacio original estimado (en bits):", original_bits)
-print("Espacio comprimido (en bits):", compressed_bits)
-# Códigos Huffman generados previamente (pueden variar si el árbol es reconstruido)
-huffman_codes = {
-    'Ankh': '00',
-    'Lotus': '010',
-    'Scarab': '011',
-    'Obelisk': '100',
-    'Djed': '101',
-    'Sphinx': '1100',
-    'Pyramid': '1101',
-    'Eye of Horus': '111'
+# Diccionario inverso basado en el código de Huffman
+reverse_codebook = {
+    '00': 'Ankh',
+    '010': 'Lotus',
+    '011': 'Scarab',
+    '100': 'Obelisk',
+    '101': 'Djed',
+    '1100': 'Sphinx',
+    '1101': 'Pyramid',
+    '111': 'Eye of Horus'
 }
 
-# Función para decodificar un mensaje codificado usando códigos Huffman
-def decode(encoded_message, codes):
-    reverse_codes = {v: k for k, v in codes.items()}
+# Diccionario de traducción de jeroglíficos a significados en español
+jeroglifico_a_espanol = {
+    'Ankh': 'vida',
+    'Lotus': 'pureza',
+    'Scarab': 'transformación',
+    'Obelisk': 'estabilidad',
+    'Djed': 'durabilidad',
+    'Sphinx': 'guardián',
+    'Pyramid': 'eternidad',
+    'Eye of Horus': 'protección'
+}
+
+def decode_and_translate_huffman(encoded_message, reverse_codebook, translation_dict):
     decoded_message = []
-    buffer = ""
+    translated_message = []
+    current_code = ""
     for bit in encoded_message:
-        buffer += bit
-        if buffer in reverse_codes:
-            decoded_message.append(reverse_codes[buffer])
-            buffer = ""
-    return decoded_message
+        current_code += bit
+        if current_code in reverse_codebook:
+            jeroglifico = reverse_codebook[current_code]
+            decoded_message.append(jeroglifico)
+            translated_message.append(translation_dict[jeroglifico])
+            current_code = ""  # Reset the current code
+    return ' '.join(decoded_message), ' '.join(translated_message)
 
-# Mensajes codificados proporcionados
-encoded_messages = [
-    "10001011101011000010111010001110000011011000000111100111101001011000011010011100110100010111010111111101000011110011111100111101000110001100000010110101111011111110111010110110111001110110111100111111100101001010010100000101101011000101100110100011100100101100001100100011010110101011111111111011011101110010000100101011000111111100010001110110011001011010001101111101011010001101110000000111001001010100011111100001100101101011100110011110100011000110000001011010111110011100",
-    "0110101011011100101000111101011100110111010110110100001000111010100101111010011110111001010001111010111001101110101100001100010011010001110010010001100010110011001110010010000111101111010"
-]
+def verify_translation(translated_message):
+    keywords = ['vida', 'pureza', 'transformación', 'estabilidad', 'durabilidad', 'guardián', 'eternidad', 'protección']
+    for keyword in keywords:
+        if keyword in translated_message:
+            return True
+    return False
 
-# Aplicar la función de descifrado a cada mensaje codificado
-decoded_messages = [decode(msg, huffman_codes) for msg in encoded_messages]
+# Mensajes codificados para decodificar
+mensaje_1 = "10001011101011000010111010001110000011011000000111100111101001011000011010011100110100010111010111111101000011110011111100111101000110001100000010110101111011111110111010110110111001110110111100111111100101001010010100000101101011000101100110100011100100101100001100100011010110101011111111111011011101110010000100101011000111111100010001110110011001011010001101111101011010001101110000000111001001010100011111100001100101101011100110011110100011000110000001011010111110011100"
+mensaje_2 = "0110101011011100101000111101011100110111010110110100001000111010100101111010011111110111001010001111010111001101110101100001100010011010001110010010001100010110011001110010010000111101111010"
 
-# Unir los elementos decodificados para formar el mensaje completo descifrado
-decoded_text_messages = [' '.join(message) for message in decoded_messages]
+# Decodificación y traducción del mensaje 1
+decoded_message_1, translated_message_1 = decode_and_translate_huffman(mensaje_1, reverse_codebook, jeroglifico_a_espanol)
 
-# Imprimir los mensajes descifrados
-for i, message in enumerate(decoded_text_messages, 1):
-    print(f"Mensaje {i} descifrado: {message}")
+# Verificación del mensaje 1
+if verify_translation(translated_message_1):
+    print("Decoded Message 1:", decoded_message_1)
+    print("Translated Message 1:", translated_message_1)
+else:
+    print("La traducción del mensaje 1 no tiene sentido.")
 
+# Decodificación y traducción del mensaje 2
+decoded_message_2, translated_message_2 = decode_and_translate_huffman(mensaje_2, reverse_codebook, jeroglifico_a_espanol)
+
+# Verificación del mensaje 2
+if verify_translation(translated_message_2):
+    print("Decoded Message 2:", decoded_message_2)
+    print("Translated Message 2:", translated_message_2)
+else:
+    print("La traducción del mensaje 2 no tiene sentido.")
